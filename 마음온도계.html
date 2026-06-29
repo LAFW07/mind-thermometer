@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="마음온도계">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FFF8F0">
+<title>마음온도계 🌡️</title>
+
+<!-- PWA manifest inline -->
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22%EB%A7%88%EC%9D%8C%EC%98%A8%EB%8F%84%EA%B3%84%22%2C%22short_name%22%3A%22%EB%A7%88%EC%9D%8C%EC%98%A8%EB%8F%84%EA%B3%84%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FFF8F0%22%2C%22theme_color%22%3A%22%23FF7B7B%22%2C%22orientation%22%3A%22portrait%22%7D">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --cream:#FFF8F0; --card:#FFFFFF; --coral:#FF7B7B;
+  --td:#3D2B1F; --tm:#7A5C50; --tl:#B8998F;
+  --border:#F0E4DC; --shadow:rgba(61,43,31,0.08); --r:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--cream);color:var(--td);
+  display:flex;flex-direction:column;
+  height:100dvh; /* dynamic viewport height for mobile */
+}
+
+/* ── BG DECO ── */
+#bgDeco{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.deco{position:absolute;font-size:1.6rem;opacity:.1;animation:flt 8s ease-in-out infinite}
+@keyframes flt{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-14px) rotate(10deg)}}
+
+/* ── HEADER ── */
+.hdr{
+  flex-shrink:0;position:relative;z-index:10;
+  background:var(--card);border-bottom:2px solid var(--border);
+  padding:12px 16px 10px;
+  box-shadow:0 2px 12px var(--shadow);
+}
+.hdr-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.hdr-title{font-size:1.2rem;font-weight:900;color:var(--coral)}
+.hdr-fields{display:flex;gap:8px}
+.fgrp{flex:1}
+.fgrp label{display:block;font-size:.65rem;font-weight:700;color:var(--tl);letter-spacing:.04em;margin-bottom:3px}
+.finput{
+  width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:10px;
+  font-family:inherit;font-size:.88rem;color:var(--td);
+  background:var(--cream);outline:none;transition:border-color .2s
+}
+.finput:focus{border-color:var(--coral)}
+
+/* ── SCROLL BODY ── */
+#scrollBody{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  position:relative;z-index:1;
+  -webkit-overflow-scrolling:touch;
+  padding:14px 14px 90px;
+  display:flex;flex-direction:column;gap:12px;
+}
+
+/* ── THERMO ROW ── */
+.thermo-row{display:flex;gap:12px;align-items:stretch}
+
+/* left temp badge */
+.temp-badge{
+  flex-shrink:0;width:88px;
+  background:var(--card);border-radius:var(--r);
+  border:2px solid var(--border);
+  box-shadow:0 4px 16px var(--shadow);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:14px 8px;
+}
+.badge-heart{font-size:1.4rem;transition:transform .2s}
+.badge-num{font-size:2.8rem;font-weight:900;line-height:1;transition:color .35s}
+.badge-unit{font-size:.8rem;font-weight:700;color:var(--tm)}
+.badge-face{font-size:1.9rem;transition:all .3s}
+.badge-lbl{font-size:.62rem;font-weight:700;color:var(--tl);letter-spacing:.04em}
+
+/* thermometer */
+.thermo-col{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.thermo-hint{font-size:.62rem;color:var(--tl);font-weight:500}
+
+/* emotion panel */
+.emo-panel{
+  flex:1;background:var(--card);border-radius:var(--r);
+  border:2px solid var(--border);box-shadow:0 4px 16px var(--shadow);
+  padding:12px 10px;display:flex;flex-direction:column;gap:8px;
+  min-width:0;
+}
+.panel-lbl{font-size:.68rem;font-weight:700;color:var(--tl);letter-spacing:.04em}
+.emo-input{
+  width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:10px;
+  font-family:inherit;font-size:.88rem;color:var(--td);
+  background:var(--cream);outline:none;transition:border-color .2s
+}
+.emo-input:focus{border-color:var(--coral)}
+.emo-chips{display:flex;flex-wrap:wrap;gap:5px;overflow-y:auto;max-height:150px}
+.chip{
+  padding:5px 7px;border-radius:30px;font-size:.72rem;font-weight:500;
+  border:2px solid var(--border);background:var(--cream);color:var(--td);
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.chip:active,.chip.on{background:var(--coral);color:#fff;border-color:var(--coral);transform:scale(.95)}
+
+/* ── SECTION CARD ── */
+.card{
+  background:var(--card);border-radius:var(--r);
+  border:2px solid var(--border);box-shadow:0 4px 16px var(--shadow);
+  padding:14px;
+}
+.card-lbl{font-size:.7rem;font-weight:700;color:var(--tl);letter-spacing:.04em;margin-bottom:10px}
+
+/* reason */
+.reason-ta{
+  width:100%;min-height:80px;resize:none;
+  padding:10px 12px;border:2px solid var(--border);border-radius:12px;
+  font-family:inherit;font-size:.88rem;color:var(--td);
+  background:var(--cream);outline:none;transition:border-color .2s;line-height:1.6
+}
+.reason-ta:focus{border-color:var(--coral)}
+.char{text-align:right;font-size:.65rem;color:var(--tl);margin-top:4px;font-weight:500}
+.kw-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.kw{
+  padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:500;
+  background:var(--cream);border:2px solid var(--border);color:var(--tm);cursor:pointer
+}
+.kw:active{background:#FFF0EB;border-color:var(--coral);color:var(--coral)}
+
+/* memo */
+.memo-toggle{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;
+  background:var(--card);border-radius:12px;border:2px solid var(--border);
+  cursor:pointer;font-size:.78rem;font-weight:700;color:var(--tm);
+  box-shadow:0 2px 8px var(--shadow);transition:background .2s
+}
+.memo-toggle:active{background:#F5EDE8}
+.memo-arr{transition:transform .3s}
+.memo-toggle.open .memo-arr{transform:rotate(180deg)}
+.memo-body{display:none;margin-top:6px;background:var(--card);border-radius:12px;border:2px solid var(--border);padding:12px}
+.memo-body.open{display:block}
+.memo-ta{
+  width:100%;min-height:72px;resize:none;
+  padding:8px 10px;border:2px solid var(--border);border-radius:10px;
+  font-family:inherit;font-size:.82rem;color:var(--td);
+  background:var(--cream);outline:none
+}
+.memo-ta:focus{border-color:#A78BFA}
+.memo-opt{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.72rem;color:var(--tm)}
+
+/* history */
+.hist-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.hist-clr{font-size:.65rem;color:var(--tl);background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit}
+.hist-graph{display:flex;align-items:flex-end;gap:5px;height:64px;padding-bottom:2px}
+.hbar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.hbar{width:100%;border-radius:6px 6px 0 0;min-height:4px;cursor:pointer;transition:height .4s ease}
+.hbar-lbl{font-size:.58rem;color:var(--tl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center}
+.hist-cmp{
+  margin-top:8px;padding:7px 10px;background:var(--cream);
+  border-radius:10px;border:1px solid var(--border);
+  font-size:.75rem;color:var(--tm);display:flex;align-items:center;gap:6px
+}
+.arr-up{color:#E84545}.arr-dn{color:#6BA3D6}.arr-same{color:var(--tl)}
+
+/* ── ACTION BAR ── */
+.action-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:20;
+  display:flex;gap:8px;padding:10px 14px;
+  background:rgba(255,248,240,.96);backdrop-filter:blur(12px);
+  border-top:2px solid var(--border);
+}
+.btn{
+  flex:1;padding:12px 4px;border-radius:14px;border:none;cursor:pointer;
+  font-family:inherit;font-size:.78rem;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1;
+  transition:transform .15s;
+}
+.btn:active{transform:scale(.94)}
+.btn-ico{font-size:1.15rem}
+.btn-reset{background:var(--cream);color:var(--tm);border:2px solid var(--border)}
+.btn-save{background:var(--coral);color:#fff;box-shadow:0 4px 14px rgba(255,123,123,.4)}
+.btn-img{background:#5BBF8A;color:#fff;box-shadow:0 4px 14px rgba(91,191,138,.35)}
+.btn-print{background:#6BA3D6;color:#fff;box-shadow:0 4px 14px rgba(107,163,214,.35)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(.85);
+  background:var(--card);border-radius:24px;
+  padding:28px 32px;text-align:center;
+  box-shadow:0 20px 60px rgba(61,43,31,.2);
+  z-index:100;opacity:0;pointer-events:none;
+  transition:all .28s;min-width:260px;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+.t-ico{font-size:2.8rem;margin-bottom:10px}
+.t-msg{font-size:1.05rem;font-weight:700;color:var(--td);margin-bottom:5px}
+.t-sub{font-size:.82rem;color:var(--tm);line-height:1.5;white-space:pre-line}
+.t-close{margin-top:14px;padding:10px 28px;border-radius:30px;background:var(--coral);color:#fff;border:none;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+
+/* ── ANIMATIONS ── */
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+@keyframes shk{0%,100%{transform:rotate(0)}20%{transform:rotate(-9deg)}40%{transform:rotate(9deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}}
+.pop{animation:pop .22s ease}
+.shk{animation:shk .4s ease}
+
+/* ── PRINT ── */
+@media print{
+  .action-bar,.bg-deco,.memo-section,.history-section{display:none!important}
+  body{overflow:auto;height:auto}
+  html,body{height:auto}
+  #scrollBody{overflow:visible;padding:0}
+  .hdr{position:static;box-shadow:none}
+  .card,.temp-badge,.emo-panel{box-shadow:none}
+  .emo-chips,.kw-row,.btn{display:none!important}
+  #printMemo{display:block!important}
+}
+#printMemo{display:none}
+</style>
+</head>
+<body>
+
+<div id="bgDeco"></div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-top">
+    <span style="font-size:1.4rem">🌡️</span>
+    <span class="hdr-title">마음온도계</span>
+  </div>
+  <div class="hdr-fields">
+    <div class="fgrp">
+      <label>이름</label>
+      <input id="nameInput" type="text" class="finput" placeholder="이름을 적어줘요">
+    </div>
+    <div class="fgrp" style="max-width:128px">
+      <label>날짜</label>
+      <input id="dateInput" type="date" class="finput">
+    </div>
+  </div>
+</header>
+
+<!-- SCROLL BODY -->
+<div id="scrollBody">
+
+  <!-- 온도계 + 감정 -->
+  <div class="thermo-row">
+    <div class="temp-badge" id="tempBadge">
+      <div class="badge-heart" id="badgeHeart">❤️</div>
+      <div class="badge-num" id="badgeNum" style="color:#5BBF8A">5</div>
+      <div class="badge-unit">℃</div>
+      <div class="badge-face" id="badgeFace">🙂</div>
+      <div class="badge-lbl">내 마음온도</div>
+    </div>
+
+    <div class="thermo-col">
+      <svg id="thermoSVG" width="70" height="290" viewBox="0 0 70 290" xmlns="http://www.w3.org/2000/svg"
+           style="touch-action:none;user-select:none;cursor:ns-resize">
+        <!-- tube bg -->
+        <rect x="27" y="10" width="16" height="216" rx="8" fill="#F0E4DC"/>
+        <!-- fill -->
+        <clipPath id="fc"><rect x="28" y="11" width="14" height="214" rx="7"/></clipPath>
+        <rect id="tFill" x="28" y="118" width="14" height="108" rx="7" fill="#5BBF8A" clip-path="url(#fc)" style="transition:y .35s ease,height .35s ease,fill .35s ease"/>
+        <!-- tube outline -->
+        <rect x="27" y="10" width="16" height="216" rx="8" fill="none" stroke="#D4C0B8" stroke-width="2"/>
+        <!-- bulb -->
+        <circle cx="35" cy="246" r="20" fill="#F0E4DC"/>
+        <circle id="tBulb" cx="35" cy="246" r="16" fill="#5BBF8A" style="transition:fill .35s ease"/>
+        <circle cx="35" cy="246" r="20" fill="none" stroke="#D4C0B8" stroke-width="2"/>
+        <!-- eyes -->
+        <circle cx="30" cy="242" r="2.8" fill="white" opacity=".9"/>
+        <circle cx="40" cy="242" r="2.8" fill="white" opacity=".9"/>
+        <circle id="eyeL" cx="30.8" cy="243" r="1.3" fill="#3D2B1F"/>
+        <circle id="eyeR" cx="40.8" cy="243" r="1.3" fill="#3D2B1F"/>
+        <!-- blush -->
+        <ellipse cx="25.5" cy="248.5" rx="3" ry="2" fill="white" opacity=".35"/>
+        <ellipse cx="44.5" cy="248.5" rx="3" ry="2" fill="white" opacity=".35"/>
+        <!-- mouth -->
+        <path id="tMouth" d="M31 252 Q35 255 39 252" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" style="transition:d .3s ease"/>
+        <!-- ticks -->
+        <g id="ticks"></g>
+        <!-- drag dot -->
+        <circle id="dragDot" cx="35" cy="118" r="7.5" fill="white" stroke="#D4C0B8" stroke-width="2" opacity=".9"/>
+      </svg>
+      <div class="thermo-hint">☝️ 드래그</div>
+    </div>
+
+    <div class="emo-panel">
+      <div class="panel-lbl">지금 나는...</div>
+      <input id="emoInput" type="text" class="emo-input" placeholder="예) 기뻐요">
+      <div class="emo-chips" id="emoChips"></div>
+    </div>
+  </div>
+
+  <!-- 이유 -->
+  <div class="card">
+    <div class="card-lbl">왜 그렇게 느꼈나요?</div>
+    <textarea id="reasonTA" class="reason-ta" maxlength="500"
+      placeholder="오늘 있었던 일을 자유롭게 써줘요..."></textarea>
+    <div class="char"><span id="charCnt">0</span> / 500</div>
+    <div id="kwRow" class="kw-row"></div>
+  </div>
+
+  <!-- 상담자 메모 -->
+  <div class="memo-section">
+    <div class="memo-toggle" id="memoToggle">
+      <span>📝</span><span style="flex:1">상담자 메모</span><span class="memo-arr">▼</span>
+    </div>
+    <div class="memo-body" id="memoBody">
+      <textarea id="memoTA" class="memo-ta" placeholder="상담자만 보는 메모"></textarea>
+      <div class="memo-opt">
+        <input type="checkbox" id="memoPrint" style="cursor:pointer">
+        <label for="memoPrint" style="cursor:pointer">인쇄 시 포함</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기록 -->
+  <div class="history-section card">
+    <div class="hist-hdr">
+      <span style="font-size:.72rem;font-weight:700;color:var(--tl)">📊 마음온도 기록</span>
+      <button class="hist-clr" id="histClr">기록 지우기</button>
+    </div>
+    <div class="hist-graph" id="histGraph">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--tl);font-size:.76rem">아직 기록이 없어요</div>
+    </div>
+    <div class="hist-cmp" id="histCmp" style="display:none"></div>
+  </div>
+
+</div><!-- /scrollBody -->
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <button class="btn btn-reset" id="btnReset"><span class="btn-ico">🔄</span>다시하기</button>
+  <button class="btn btn-save"  id="btnSave"> <span class="btn-ico">💾</span>저장하기</button>
+  <button class="btn btn-img"   id="btnImg">  <span class="btn-ico">🖼️</span>이미지</button>
+  <button class="btn btn-print" id="btnPrint"><span class="btn-ico">🖨️</span>인쇄</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="t-ico" id="tIco">🎉</div>
+  <div class="t-msg" id="tMsg">저장되었어요!</div>
+  <div class="t-sub" id="tSub">오늘의 마음을 표현해줘서 고마워! 💕</div>
+  <button class="t-close" id="tClose">확인</button>
+</div>
+
+<div id="printMemo" style="display:none;padding:0 20px"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const TC=['#6BA3D6','#6BA3D6','#6BA3D6','#7EC8E3','#7EC8E3','#5BBF8A','#F9D94E','#F9D94E','#F5934A','#F5934A','#E84545'];
+const TF=['😢','😢','😢','😕','😕','🙂','😊','😊','😁','😁','😍'];
+const TN=['파랑','파랑','파랑','하늘','하늘','초록','노랑','노랑','주황','주황','빨강'];
+const EMOTIONS=[
+  '😀 행복해요','😊 기뻐요','😌 편안해요','😍 설레요',
+  '😢 슬퍼요','😭 속상해요','😡 화나요','😠 짜증나요',
+  '😨 무서워요','😰 불안해요','😖 답답해요','😴 피곤해요',
+  '🤔 헷갈려요','😐 그냥 그래요','😳 부끄러워요','🥰 사랑받아요'
+];
+const KW={
+  0:['슬퍼요','무기력해요','외로워요','힘들어요'],
+  1:['슬퍼요','무기력해요','외로워요','힘들어요'],
+  2:['슬퍼요','무기력해요','외로워요','힘들어요'],
+  3:['조금 힘들어요','별로예요','그냥 그래요'],
+  4:['조금 힘들어요','별로예요','그냥 그래요'],
+  5:['평범해요','그냥 그래요','보통이에요'],
+  6:['즐거워요','좋아요','신나요'],
+  7:['즐거워요','좋아요','신나요'],
+  8:['정말 좋아요','행복해요','기뻐요'],
+  9:['정말 좋아요','행복해요','기뻐요'],
+  10:['최고예요','정말 행복해요','너무 좋아요']
+};
+const DECO=['☁️','⭐','💛','🌸','✨','💙','🌟','💚','🌙','🩷'];
+
+// ── STATE ─────────────────────────────────────────────
+let temp=5, dragging=false;
+
+// ── INIT ──────────────────────────────────────────────
+function init(){
+  // date
+  document.getElementById('dateInput').value=new Date().toISOString().split('T')[0];
+
+  // bg deco
+  const bg=document.getElementById('bgDeco');
+  DECO.forEach((d,i)=>{
+    const el=document.createElement('div');
+    el.className='deco'; el.textContent=d;
+    el.style.left=(5+i*9.5%90)+'%';
+    el.style.top=(5+i*13.7%85)+'%';
+    el.style.animationDelay=(i*.7)+'s';
+    el.style.animationDuration=(6+i%4)+'s';
+    bg.appendChild(el);
+  });
+
+  // ticks
+  buildTicks();
+
+  // emotion chips
+  const chips=document.getElementById('emoChips');
+  EMOTIONS.forEach(em=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.textContent=em;
+    b.addEventListener('click',()=>{
+      document.getElementById('emoInput').value=em.replace(/^\S+\s/,'');
+      chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+    });
+    chips.appendChild(b);
+  });
+
+  // drag
+  setupDrag();
+  updateDisplay(5,true);
+
+  // reason char count
+  document.getElementById('reasonTA').addEventListener('input',function(){
+    document.getElementById('charCnt').textContent=this.value.length;
+  });
+
+  // memo toggle
+  document.getElementById('memoToggle').addEventListener('click',()=>{
+    document.getElementById('memoToggle').classList.toggle('open');
+    document.getElementById('memoBody').classList.toggle('open');
+  });
+
+  // keyword row
+  document.getElementById('kwRow').addEventListener('click',e=>{
+    if(e.target.classList.contains('kw')){
+      const ta=document.getElementById('reasonTA');
+      ta.value=(ta.value?ta.value+' ':'')+e.target.textContent;
+      document.getElementById('charCnt').textContent=ta.value.length;
+    }
+  });
+
+  // buttons
+  document.getElementById('btnReset').addEventListener('click',doReset);
+  document.getElementById('btnSave').addEventListener('click',doSave);
+  document.getElementById('btnImg').addEventListener('click',doImage);
+  document.getElementById('btnPrint').addEventListener('click',doPrint);
+  document.getElementById('tClose').addEventListener('click',()=>document.getElementById('toast').classList.remove('show'));
+  document.getElementById('histClr').addEventListener('click',()=>{
+    if(confirm('기록을 모두 지울까요?')){localStorage.removeItem('mt_hist');renderHist();}
+  });
+
+  renderHist();
+}
+
+// ── TICKS ─────────────────────────────────────────────
+function buildTicks(){
+  const g=document.getElementById('ticks');
+  const NS='http://www.w3.org/2000/svg';
+  for(let i=0;i<=10;i++){
+    const y=10+((10-i)/10)*216;
+    const ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',16); ln.setAttribute('y1',y);
+    ln.setAttribute('x2',27); ln.setAttribute('y2',y);
+    ln.setAttribute('stroke','#C4A89C'); ln.setAttribute('stroke-width','1.5');
+    g.appendChild(ln);
+    const tx=document.createElementNS(NS,'text');
+    tx.setAttribute('x',13); tx.setAttribute('y',y+4);
+    tx.setAttribute('text-anchor','end'); tx.setAttribute('font-size','9');
+    tx.setAttribute('font-family','Noto Sans KR,sans-serif');
+    tx.setAttribute('fill','#B8998F'); tx.setAttribute('font-weight','600');
+    tx.textContent=i; g.appendChild(tx);
+  }
+}
+
+// ── DRAG ──────────────────────────────────────────────
+function setupDrag(){
+  const svg=document.getElementById('thermoSVG');
+  function getT(cy){
+    const r=svg.getBoundingClientRect();
+    const relY=cy-r.top;
+    const cY=Math.max(10,Math.min(226,relY));
+    return Math.round(Math.max(0,Math.min(10,10-((cY-10)/216)*10)));
+  }
+  svg.addEventListener('touchstart',e=>{dragging=true;e.preventDefault();updateDisplay(getT(e.touches[0].clientY));},{passive:false});
+  svg.addEventListener('touchmove', e=>{if(!dragging)return;e.preventDefault();updateDisplay(getT(e.touches[0].clientY));},{passive:false});
+  svg.addEventListener('touchend', ()=>{dragging=false;});
+  svg.addEventListener('mousedown',e=>{dragging=true;updateDisplay(getT(e.clientY));});
+  window.addEventListener('mousemove',e=>{if(!dragging)return;updateDisplay(getT(e.clientY));});
+  window.addEventListener('mouseup', ()=>{dragging=false;});
+}
+
+// ── UPDATE ────────────────────────────────────────────
+function updateDisplay(t,silent){
+  const prev=temp; temp=t;
+  const col=TC[t], face=TF[t];
+
+  // fill
+  const fillTop=10+((10-t)/10)*216;
+  const fillH=226-fillTop;
+  const fill=document.getElementById('tFill');
+  fill.setAttribute('y',fillTop);
+  fill.setAttribute('height',Math.max(0,fillH));
+  fill.style.fill=col;
+  document.getElementById('tBulb').style.fill=col;
+
+  // drag dot
+  document.getElementById('dragDot').setAttribute('cy',Math.max(16,Math.min(224,fillTop)));
+
+  // mouth
+  const m=document.getElementById('tMouth');
+  if(t<=2)      m.setAttribute('d','M31 254 Q35 251 39 254');
+  else if(t<=4) m.setAttribute('d','M31 253 Q35 254 39 253');
+  else if(t<=6) m.setAttribute('d','M31 252 Q35 255 39 252');
+  else          m.setAttribute('d','M30 251 Q35 257 40 251');
+
+  // badge
+  document.getElementById('badgeNum').style.color=col;
+  document.getElementById('badgeNum').textContent=t;
+  document.getElementById('badgeFace').textContent=face;
+
+  if(!silent && prev!==t){
+    const h=document.getElementById('badgeHeart');
+    h.classList.remove('pop'); void h.offsetWidth; h.classList.add('pop');
+    if(navigator.vibrate)navigator.vibrate(15);
+    updateKW(t);
+  }
+}
+
+function updateKW(t){
+  const row=document.getElementById('kwRow'); row.innerHTML='';
+  (KW[t]||[]).forEach(k=>{
+    const s=document.createElement('span'); s.className='kw'; s.textContent=k;
+    row.appendChild(s);
+  });
+}
+
+// ── SAVE ──────────────────────────────────────────────
+function doSave(){
+  const rec={
+    id:Date.now(),
+    name:document.getElementById('nameInput').value,
+    date:document.getElementById('dateInput').value,
+    temp,
+    color:TN[temp],
+    emotion:document.getElementById('emoInput').value,
+    reason:document.getElementById('reasonTA').value,
+    savedAt:new Date().toISOString()
+  };
+  const hist=JSON.parse(localStorage.getItem('mt_hist')||'[]');
+  hist.push(rec);
+  if(hist.length>20)hist.splice(0,hist.length-20);
+  localStorage.setItem('mt_hist',JSON.stringify(hist));
+  renderHist();
+
+  // toast
+  document.getElementById('tIco').textContent=TF[temp]+' '+temp+'℃';
+  document.getElementById('tMsg').textContent='저장되었어요!';
+  document.getElementById('tSub').textContent='오늘의 마음을 표현해줘서 고마워! 💕\n잘 기억해둘게요.';
+  document.getElementById('toast').classList.add('show');
+
+  const b=document.getElementById('btnSave');
+  b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+}
+
+// ── RESET ─────────────────────────────────────────────
+function doReset(){
+  ['nameInput','emoInput','reasonTA','memoTA'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('charCnt').textContent='0';
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  updateDisplay(5,false); updateKW(5);
+  const b=document.getElementById('btnReset');
+  b.classList.remove('shk'); void b.offsetWidth; b.classList.add('shk');
+}
+
+// ── PRINT ─────────────────────────────────────────────
+function doPrint(){
+  if(document.getElementById('memoPrint').checked){
+    const el=document.getElementById('printMemo');
+    el.style.display='block';
+    el.innerHTML=`<div style="margin:12px 0;padding:10px;border:1px solid #ccc;border-radius:8px"><b>상담자 메모</b><br><pre style="font-family:inherit;white-space:pre-wrap">${document.getElementById('memoTA').value}</pre></div>`;
+  }
+  window.print();
+  setTimeout(()=>{document.getElementById('printMemo').style.display='none';},1000);
+}
+
+// ── IMAGE ─────────────────────────────────────────────
+function doImage(){
+  const c=document.createElement('canvas');
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  c.width=480*dpr; c.height=680*dpr;
+  const ctx=c.getContext('2d'); ctx.scale(dpr,dpr);
+  const col=TC[temp];
+  const name=document.getElementById('nameInput').value||'이름 없음';
+  const date=document.getElementById('dateInput').value;
+  const emo=document.getElementById('emoInput').value||'-';
+  const rsn=document.getElementById('reasonTA').value||'-';
+
+  // bg
+  ctx.fillStyle='#FFF8F0'; ctx.fillRect(0,0,480,680);
+  // header bar
+  ctx.fillStyle=col; ctx.fillRect(0,0,480,76);
+  ctx.fillStyle='white';
+  ctx.font='bold 24px sans-serif'; ctx.fillText('🌡️ 마음온도계',22,34);
+  ctx.font='13px sans-serif'; ctx.fillText(name+' · '+date,22,58);
+  // temp box
+  ctx.fillStyle='white'; rr(ctx,18,90,196,176,18); ctx.fill();
+  ctx.fillStyle=col; ctx.font='bold 76px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(temp+'℃',116,192);
+  ctx.fillStyle='#7A5C50'; ctx.font='20px sans-serif';
+  ctx.fillText(TF[temp],116,234); ctx.textAlign='left';
+  // emo box
+  ctx.fillStyle='white'; rr(ctx,228,90,234,80,16); ctx.fill();
+  ctx.fillStyle='#B8998F'; ctx.font='bold 10px sans-serif'; ctx.fillText('지금 나는...',244,116);
+  ctx.fillStyle='#3D2B1F'; ctx.font='bold 15px sans-serif'; ctx.fillText(emo.substring(0,18),244,146);
+  // color box
+  ctx.fillStyle='white'; rr(ctx,228,182,234,84,16); ctx.fill();
+  ctx.fillStyle='#B8998F'; ctx.font='bold 10px sans-serif'; ctx.fillText('오늘의 마음 색깔',244,208);
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(256,242,14,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#3D2B1F'; ctx.font='bold 13px sans-serif'; ctx.fillText(TN[temp],280,248);
+  // reason box
+  ctx.fillStyle='white'; rr(ctx,18,280,444,160,16); ctx.fill();
+  ctx.fillStyle='#B8998F'; ctx.font='bold 10px sans-serif'; ctx.fillText('왜 그렇게 느꼈나요?',34,306);
+  ctx.fillStyle='#3D2B1F'; ctx.font='13px sans-serif'; wt(ctx,rsn,34,330,410,22);
+  // footer
+  ctx.fillStyle=col; ctx.fillRect(0,616,480,64);
+  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.textAlign='center';
+  ctx.font='bold 12px sans-serif'; ctx.fillText('강원남부 아동보호전문기관',240,644);
+  ctx.font='11px sans-serif'; ctx.fillText('마음온도계 상담도구',240,662);
+
+  c.toBlob(blob=>{
+    const u=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=u; a.download=`마음온도계_${name}_${date}.png`; a.click();
+    URL.revokeObjectURL(u);
+  });
+}
+
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+function wt(ctx,text,x,y,mw,lh){
+  const chars=[...text];let line='',cy=y;
+  for(let i=0;i<chars.length&&cy<y+lh*5;i++){
+    const t=line+chars[i];
+    if(ctx.measureText(t).width>mw){ctx.fillText(line,x,cy);line=chars[i];cy+=lh;}
+    else line=t;
+  }
+  if(line)ctx.fillText(line,x,cy);
+}
+
+// ── HISTORY ───────────────────────────────────────────
+function renderHist(){
+  const hist=JSON.parse(localStorage.getItem('mt_hist')||'[]');
+  const graph=document.getElementById('histGraph');
+  const cmp=document.getElementById('histCmp');
+  if(hist.length===0){
+    graph.innerHTML='<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--tl);font-size:.74rem">아직 기록이 없어요</div>';
+    cmp.style.display='none'; return;
+  }
+  graph.innerHTML='';
+  hist.slice(-8).forEach(r=>{
+    const w=document.createElement('div'); w.className='hbar-wrap';
+    const b=document.createElement('div'); b.className='hbar';
+    b.style.height=(r.temp/10*56+4)+'px';
+    b.style.background=TC[r.temp];
+    b.title=r.date+'\n'+r.temp+'℃ '+(r.emotion||'');
+    const l=document.createElement('div'); l.className='hbar-lbl';
+    l.textContent=r.date?r.date.slice(5):'';
+    w.appendChild(b); w.appendChild(l); graph.appendChild(w);
+  });
+  if(hist.length>=2){
+    const la=hist[hist.length-1], pr=hist[hist.length-2];
+    const d=la.temp-pr.temp;
+    const arrow=d>0?'▲':d<0?'▼':'─';
+    const cls=d>0?'arr-up':d<0?'arr-dn':'arr-same';
+    cmp.style.display='flex';
+    cmp.innerHTML=`<span>오늘 <b>${la.temp}℃</b></span><span style="color:var(--tl)">|</span><span>이전 <b>${pr.temp}℃</b></span><span class="${cls}">${arrow} ${Math.abs(d)>0?(d>0?'+':'')+d:'변화없음'}</span>`;
+  } else cmp.style.display='none';
+}
+
+// ── BOOT ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
